@@ -10,8 +10,8 @@ import (
 	"github.com/dougkirkley/usps"
 )
 
-// RateRequest handles rate request
-type RateRequest struct {
+// Request handles rate request
+type Request struct {
 	XMLName        xml.Name `xml:Package" json:"package"`
 	ID             string   `xml:"ID,attr" json:"id"`
 	Service        string   `xml:"Service" json:"service"`
@@ -22,8 +22,8 @@ type RateRequest struct {
 	Container      string   `xml:"Container" json:"container"`
 }
 
-// RateResponse handles Response
-type RateResponse struct {
+// Response handles Response
+type Response struct {
 	XMLName        xml.Name `xml:RateV4Response"`
 	Package        Package  `xml:"Package"`
 }
@@ -48,29 +48,29 @@ type Postage struct {
 	Rate        string   `xml:"Rate"`
 }
 
+// Interface is implemented by Client
+type Interface interface {
+	Calculate(rates []Request) (string, error)
+}
+
 // Client is a USPS API client.
 type Client struct {
-	userID string
+	user   string
 	url    string
 	client *http.Client
 }
 
-// Interface is implemented by Client
-type Interface interface {
-	Calculate(rates []RateRequest) (string, error)
-}
-
-// NewClient returns a USPS API rate client.
-func NewClient(user usps.USPS) Interface {
+// NewRate returns a USPS API rate client.
+func NewRate(user usps.USPS) Interface {
 	return &Client{
-		userID: user.Username,
+		user: user.Username,
 		url:    "https://secure.shippingapis.com/RateV4API.dll",
 		client: http.DefaultClient,
 	}
 }
 
 // Calculate retuns shipping rate
-func (c *Client) Calculate(rates []RateRequest) (string, error) {
+func (c *Client) Calculate(rates []Request) (string, error) {
 	req, err := http.NewRequest("GET", c.url, nil)
 	if err != nil {
 		return "", err
@@ -87,7 +87,7 @@ func (c *Client) Calculate(rates []RateRequest) (string, error) {
 
 	// Construct the URL encoded query
 	query := `<RateV4Request USERID=%q><Revision>%s</Revision>%s</RateV4Request>`
-	req.URL.RawQuery = fmt.Sprintf("API=RateV4&XML=%s", url.QueryEscape(fmt.Sprintf(query, c.userID, "0", packages)))
+	req.URL.RawQuery = fmt.Sprintf("API=RateV4&XML=%s", url.QueryEscape(fmt.Sprintf(query, c.user, "0", packages)))
 
 	// Get the request
 	resp, err := c.client.Do(req)
@@ -100,7 +100,7 @@ func (c *Client) Calculate(rates []RateRequest) (string, error) {
 	if err != nil {
 		return "", err
 	}
-	var rateResp RateResponse
+	var rateResp Response
 	err = xml.Unmarshal(body, &rateResp)
 	if err != nil {
 		return "", err
