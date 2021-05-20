@@ -2,7 +2,7 @@
 
 Example of calculating shipping rate for one package.
 
-```
+```go
 package main
 
 import (
